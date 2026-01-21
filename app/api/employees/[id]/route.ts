@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
-import { Employee, Accomplishment, Observation } from '@/types';
+import { Employee, Accomplishment, Observation, Award } from '@/types';
 
 // GET single employee with data
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -22,7 +22,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       'SELECT * FROM observations WHERE employee_id = ? ORDER BY created_at DESC'
     ).all(employeeId) as Observation[];
 
-    return NextResponse.json({ employee, accomplishments, observations });
+    const awards = db.prepare(`
+      SELECT a.*, at.name as award_type_name
+      FROM awards a
+      JOIN award_types at ON a.award_type_id = at.id
+      WHERE a.employee_id = ?
+      ORDER BY a.award_date DESC, a.created_at DESC
+    `).all(employeeId) as Award[];
+
+    return NextResponse.json({ employee, accomplishments, observations, awards });
   } catch (error) {
     console.error('Error fetching employee:', error);
     return NextResponse.json({ error: 'Failed to fetch employee' }, { status: 500 });

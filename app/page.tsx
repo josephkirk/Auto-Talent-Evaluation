@@ -131,6 +131,10 @@ export default function HomePage() {
                       <span className="material-symbols-outlined text-sm">visibility</span>
                       {employee.observation_count} Observations
                     </div>
+                    <div className="flex items-center gap-1.5 px-3 py-1 bg-yellow-50 text-yellow-700 rounded-full text-xs font-semibold">
+                      <span className="material-symbols-outlined text-sm">emoji_events</span>
+                      {employee.award_count} Awards
+                    </div>
                   </div>
                 </div>
 
@@ -182,7 +186,7 @@ export default function HomePage() {
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <p className="text-sm text-red-800 font-semibold mb-1">Warning: All records will be lost</p>
                 <p className="text-xs text-red-700">
-                  Deleting this employee will permanently remove all associated accomplishments and observations. This action cannot be undone.
+                  Deleting this employee will permanently remove all associated accomplishments, observations, and awards. This action cannot be undone.
                 </p>
               </div>
 

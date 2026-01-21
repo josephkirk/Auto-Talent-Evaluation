@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
-import { Employee } from '@/types';
+import { EmployeeWithStats } from '@/types';
 
 // GET all employees
 export async function GET() {
@@ -9,10 +9,11 @@ export async function GET() {
       SELECT
         e.*,
         (SELECT COUNT(*) FROM accomplishments WHERE employee_id = e.id) as accomplishment_count,
-        (SELECT COUNT(*) FROM observations WHERE employee_id = e.id) as observation_count
+        (SELECT COUNT(*) FROM observations WHERE employee_id = e.id) as observation_count,
+        (SELECT COUNT(*) FROM awards WHERE employee_id = e.id) as award_count
       FROM employees e
       ORDER BY e.created_at DESC
-    `).all() as Employee[];
+    `).all() as EmployeeWithStats[];
 
     return NextResponse.json(employees);
   } catch (error) {

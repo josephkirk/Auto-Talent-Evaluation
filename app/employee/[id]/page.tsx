@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Employee, Accomplishment, Observation } from '@/types';
+import { Employee, Accomplishment, Observation, Award } from '@/types';
 import Navigation from '@/components/Navigation';
 
 export default function EmployeeDetailPage() {
@@ -14,8 +14,9 @@ export default function EmployeeDetailPage() {
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [accomplishments, setAccomplishments] = useState<Accomplishment[]>([]);
   const [observations, setObservations] = useState<Observation[]>([]);
+  const [awards, setAwards] = useState<Award[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'accomplishments' | 'observations'>('accomplishments');
+  const [activeTab, setActiveTab] = useState<'accomplishments' | 'observations' | 'awards'>('accomplishments');
 
   // Form states
   const [accomplishmentDesc, setAccomplishmentDesc] = useState('');
@@ -23,6 +24,12 @@ export default function EmployeeDetailPage() {
   const [observationDesc, setObservationDesc] = useState('');
   const [observationCategory, setObservationCategory] = useState<Observation['category']>('other');
   const [submitting, setSubmitting] = useState(false);
+
+  // Award form states
+  const [awardTypeId, setAwardTypeId] = useState<number | ''>('');
+  const [awardDate, setAwardDate] = useState('');
+  const [awardTypes, setAwardTypes] = useState<{ id: number; name: string }[]>([]);
+  const [newAwardType, setNewAwardType] = useState('');
 
   // Edit states
   const [editingAccomplishment, setEditingAccomplishment] = useState<number | null>(null);
@@ -40,6 +47,7 @@ export default function EmployeeDetailPage() {
 
   useEffect(() => {
     fetchData();
+    fetchAwardTypes();
   }, [id]);
 
   async function fetchData() {
@@ -50,6 +58,7 @@ export default function EmployeeDetailPage() {
         setEmployee(data.employee);
         setAccomplishments(data.accomplishments);
         setObservations(data.observations);
+        setAwards(data.awards || []);
       } else {
         router.push('/');
       }
@@ -57,6 +66,16 @@ export default function EmployeeDetailPage() {
       console.error('Error fetching employee:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchAwardTypes() {
+    try {
+      const response = await fetch('/api/award-types');
+      const data = await response.json();
+      setAwardTypes(data);
+    } catch (error) {
+      console.error('Error fetching award types:', error);
     }
   }
 
@@ -214,6 +233,76 @@ export default function EmployeeDetailPage() {
     }
   }
 
+  async function addAward(e: React.FormEvent) {
+    e.preventDefault();
+    if (!awardTypeId || !awardDate) return;
+
+    setSubmitting(true);
+    try {
+      const response = await fetch('/api/awards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employee_id: id, award_type_id: awardTypeId, award_date: awardDate }),
+      });
+      if (response.ok) {
+        setAwardTypeId('');
+        setAwardDate('');
+        fetchData();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to add award');
+      }
+    } catch (error) {
+      console.error('Error adding award:', error);
+      alert('Failed to add award. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function createAwardType() {
+    if (!newAwardType.trim()) return;
+
+    setSubmitting(true);
+    try {
+      const response = await fetch('/api/award-types', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newAwardType }),
+      });
+      if (response.ok) {
+        const created = await response.json();
+        setAwardTypes([...awardTypes, created]);
+        setAwardTypeId(created.id);
+        setNewAwardType('');
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to create award type');
+      }
+    } catch (error) {
+      console.error('Error creating award type:', error);
+      alert('Failed to create award type. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function deleteAward(awardId: number) {
+    if (!confirm('Delete this award?')) return;
+    try {
+      const response = await fetch(`/api/awards/${awardId}`, { method: 'DELETE' });
+      if (response.ok) {
+        fetchData();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to delete award');
+      }
+    } catch (error) {
+      console.error('Error deleting award:', error);
+      alert('Failed to delete award. Please try again.');
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f6f6f8]">
@@ -307,10 +396,120 @@ export default function EmployeeDetailPage() {
             >
               <span className="material-symbols-outlined text-lg">visibility</span> Observations
             </button>
+            <button
+              onClick={() => setActiveTab('awards')}
+              className={`px-8 py-4 text-sm font-bold border-b-2 flex items-center gap-2 transition-colors ${
+                activeTab === 'awards'
+                  ? 'border-[#2463eb] text-[#2463eb]'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <span className="material-symbols-outlined text-lg">emoji_events</span> Awards
+            </button>
           </div>
 
           <div className="p-8">
-            {activeTab === 'accomplishments' ? (
+            {activeTab === 'awards' ? (
+              <>
+                {/* Awards Form */}
+                <div className="mb-10">
+                  <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#2463eb]">add_circle</span> Add Award
+                  </h3>
+                  <form onSubmit={addAward} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Award Type</label>
+                      <select
+                        value={awardTypeId}
+                        onChange={(e) => setAwardTypeId(e.target.value ? parseInt(e.target.value) : '')}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#2463eb] focus:border-transparent"
+                        required
+                      >
+                        <option value="">Select award type...</option>
+                        {awardTypes.map((type) => (
+                          <option key={type.id} value={type.id}>{type.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="md:col-span-1">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Award Date</label>
+                      <input
+                        type="date"
+                        value={awardDate}
+                        onChange={(e) => setAwardDate(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#2463eb] focus:border-transparent"
+                        required
+                      />
+                    </div>
+                    <div className="md:col-span-1 flex items-end">
+                      <button type="submit" disabled={submitting} className="w-full bg-slate-900 text-white py-2.5 rounded-lg text-sm font-bold hover:bg-slate-800 transition-colors">
+                        {submitting ? 'Adding...' : 'Add Award'}
+                      </button>
+                    </div>
+                  </form>
+
+                  {/* Create new award type */}
+                  <div className="mt-4 flex gap-2">
+                    <input
+                      type="text"
+                      value={newAwardType}
+                      onChange={(e) => setNewAwardType(e.target.value)}
+                      placeholder="Or create new award type..."
+                      className="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-[#2463eb]"
+                    />
+                    <button
+                      type="button"
+                      onClick={createAwardType}
+                      disabled={!newAwardType.trim() || submitting}
+                      className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-300 disabled:opacity-50"
+                    >
+                      Create Type
+                    </button>
+                  </div>
+                </div>
+
+                <hr className="border-slate-100 mb-8" />
+
+                {/* Awards List */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest">Awards Received</h3>
+                    <span className="text-xs font-medium text-slate-400">Total: {awards.length} awards</span>
+                  </div>
+
+                  {awards.length === 0 ? (
+                    <div className="text-center py-12">
+                      <span className="material-symbols-outlined text-4xl text-slate-300">emoji_events</span>
+                      <p className="text-slate-500 mt-2">No awards yet</p>
+                    </div>
+                  ) : (
+                    awards.map((award) => (
+                      <div key={award.id} className="group flex items-start justify-between p-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:border-[#2463eb]/30 transition-all">
+                        <div className="flex gap-4">
+                          <div className="mt-1 flex-shrink-0 w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600">
+                            <span className="material-symbols-outlined text-xl">emoji_events</span>
+                          </div>
+                          <div>
+                            <p className="text-slate-900 font-medium leading-relaxed">{award.award_type_name || 'Unknown Award'}</p>
+                            <div className="mt-2 flex items-center gap-3">
+                              <span className="text-xs text-slate-400">
+                                Awarded on {new Date(award.award_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => deleteAward(award.id)}
+                          className="p-2 text-slate-400 hover:text-red-500 hover:bg-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <span className="material-symbols-outlined text-lg">delete</span>
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </>
+            ) : activeTab === 'accomplishments' ? (
               <>
                 {/* Form Section */}
                 <div className="mb-10">
@@ -569,7 +768,7 @@ export default function EmployeeDetailPage() {
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <p className="text-sm text-red-800 font-semibold mb-1">Warning: All records will be lost</p>
                 <p className="text-xs text-red-700">
-                  Deleting this employee will permanently remove all associated accomplishments and observations. This action cannot be undone.
+                  Deleting this employee will permanently remove all associated accomplishments, observations, and awards. This action cannot be undone.
                 </p>
               </div>
 
