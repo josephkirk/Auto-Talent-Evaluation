@@ -18,10 +18,12 @@ It's built for lazy leader like me who needs to stay on top of employee evaluati
 The app has four main parts:
 
 - **Dashboard** — See all your employees at a glance with stats on accomplishments, observations, and awards
+![dashboard](docs/list.png)
 - **Employee Details** — Dive into a specific person's accomplishments, observations, and awards, with inline editing support
+![employee](docs/detail.png)
 - **Award Management** — Track employee awards with pre-defined award types (configured in `default_data.toml`)
 - **Report Generator** — Pick a framework (OKR, BARS, MBO, etc.), select a time period, and generate an AI-written performance review for input into HR system.
-
+![report](docs/report.png)
 ## Getting it running
 
 You'll need a few things:
