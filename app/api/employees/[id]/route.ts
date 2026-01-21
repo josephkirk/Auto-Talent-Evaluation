@@ -23,11 +23,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     ).all(employeeId) as Observation[];
 
     const awards = db.prepare(`
-      SELECT a.*, at.name as award_type_name
-      FROM awards a
-      JOIN award_types at ON a.award_type_id = at.id
-      WHERE a.employee_id = ?
-      ORDER BY a.award_date DESC, a.created_at DESC
+      SELECT * FROM awards
+      WHERE employee_id = ?
+      ORDER BY award_date DESC, created_at DESC
     `).all(employeeId) as Award[];
 
     return NextResponse.json({ employee, accomplishments, observations, awards });

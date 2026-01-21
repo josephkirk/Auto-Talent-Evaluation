@@ -26,18 +26,20 @@ export default function EmployeeDetailPage() {
   const [submitting, setSubmitting] = useState(false);
 
   // Award form states
-  const [awardTypeId, setAwardTypeId] = useState<number | ''>('');
+  const [awardTypeName, setAwardTypeName] = useState('');
   const [awardDate, setAwardDate] = useState('');
-  const [awardTypes, setAwardTypes] = useState<{ id: number; name: string }[]>([]);
-  const [newAwardType, setNewAwardType] = useState('');
+  const [awardTypes, setAwardTypes] = useState<string[]>([]);
 
   // Edit states
   const [editingAccomplishment, setEditingAccomplishment] = useState<number | null>(null);
   const [editingObservation, setEditingObservation] = useState<number | null>(null);
+  const [editingAward, setEditingAward] = useState<number | null>(null);
   const [editAccomplishmentDesc, setEditAccomplishmentDesc] = useState('');
   const [editAccomplishmentPeriod, setEditAccomplishmentPeriod] = useState('');
   const [editObservationDesc, setEditObservationDesc] = useState('');
   const [editObservationCategory, setEditObservationCategory] = useState<Observation['category']>('other');
+  const [editAwardTypeName, setEditAwardTypeName] = useState('');
+  const [editAwardDate, setEditAwardDate] = useState('');
   const [updating, setUpdating] = useState(false);
 
   // Delete employee states
@@ -73,7 +75,7 @@ export default function EmployeeDetailPage() {
     try {
       const response = await fetch('/api/award-types');
       const data = await response.json();
-      setAwardTypes(data);
+      setAwardTypes(data.map((t: { id: number; name: string }) => t.name));
     } catch (error) {
       console.error('Error fetching award types:', error);
     }
@@ -235,17 +237,17 @@ export default function EmployeeDetailPage() {
 
   async function addAward(e: React.FormEvent) {
     e.preventDefault();
-    if (!awardTypeId || !awardDate) return;
+    if (!awardTypeName || !awardDate) return;
 
     setSubmitting(true);
     try {
       const response = await fetch('/api/awards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employee_id: id, award_type_id: awardTypeId, award_date: awardDate }),
+        body: JSON.stringify({ employee_id: id, award_type_name: awardTypeName, award_date: awardDate }),
       });
       if (response.ok) {
-        setAwardTypeId('');
+        setAwardTypeName('');
         setAwardDate('');
         fetchData();
       } else {
@@ -255,33 +257,6 @@ export default function EmployeeDetailPage() {
     } catch (error) {
       console.error('Error adding award:', error);
       alert('Failed to add award. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function createAwardType() {
-    if (!newAwardType.trim()) return;
-
-    setSubmitting(true);
-    try {
-      const response = await fetch('/api/award-types', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newAwardType }),
-      });
-      if (response.ok) {
-        const created = await response.json();
-        setAwardTypes([...awardTypes, created]);
-        setAwardTypeId(created.id);
-        setNewAwardType('');
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to create award type');
-      }
-    } catch (error) {
-      console.error('Error creating award type:', error);
-      alert('Failed to create award type. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -301,6 +276,43 @@ export default function EmployeeDetailPage() {
       console.error('Error deleting award:', error);
       alert('Failed to delete award. Please try again.');
     }
+  }
+
+  async function updateAward(awardId: number) {
+    if (!editAwardTypeName || !editAwardDate) return;
+
+    setUpdating(true);
+    try {
+      const response = await fetch(`/api/awards/${awardId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ award_type_name: editAwardTypeName, award_date: editAwardDate }),
+      });
+      if (response.ok) {
+        setEditingAward(null);
+        fetchData();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to update award');
+      }
+    } catch (error) {
+      console.error('Error updating award:', error);
+      alert('Failed to update award. Please try again.');
+    } finally {
+      setUpdating(false);
+    }
+  }
+
+  function startEditAward(award: Award) {
+    setEditingAward(award.id);
+    setEditAwardTypeName(award.award_type_name);
+    setEditAwardDate(award.award_date);
+  }
+
+  function cancelEditAward() {
+    setEditingAward(null);
+    setEditAwardTypeName('');
+    setEditAwardDate('');
   }
 
   if (loading) {
@@ -420,14 +432,14 @@ export default function EmployeeDetailPage() {
                     <div className="md:col-span-2">
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Award Type</label>
                       <select
-                        value={awardTypeId}
-                        onChange={(e) => setAwardTypeId(e.target.value ? parseInt(e.target.value) : '')}
+                        value={awardTypeName}
+                        onChange={(e) => setAwardTypeName(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#2463eb] focus:border-transparent"
                         required
                       >
                         <option value="">Select award type...</option>
                         {awardTypes.map((type) => (
-                          <option key={type.id} value={type.id}>{type.name}</option>
+                          <option key={type} value={type}>{type}</option>
                         ))}
                       </select>
                     </div>
@@ -447,25 +459,6 @@ export default function EmployeeDetailPage() {
                       </button>
                     </div>
                   </form>
-
-                  {/* Create new award type */}
-                  <div className="mt-4 flex gap-2">
-                    <input
-                      type="text"
-                      value={newAwardType}
-                      onChange={(e) => setNewAwardType(e.target.value)}
-                      placeholder="Or create new award type..."
-                      className="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-[#2463eb]"
-                    />
-                    <button
-                      type="button"
-                      onClick={createAwardType}
-                      disabled={!newAwardType.trim() || submitting}
-                      className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-300 disabled:opacity-50"
-                    >
-                      Create Type
-                    </button>
-                  </div>
                 </div>
 
                 <hr className="border-slate-100 mb-8" />
@@ -485,25 +478,66 @@ export default function EmployeeDetailPage() {
                   ) : (
                     awards.map((award) => (
                       <div key={award.id} className="group flex items-start justify-between p-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:border-[#2463eb]/30 transition-all">
-                        <div className="flex gap-4">
-                          <div className="mt-1 flex-shrink-0 w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600">
-                            <span className="material-symbols-outlined text-xl">emoji_events</span>
-                          </div>
-                          <div>
-                            <p className="text-slate-900 font-medium leading-relaxed">{award.award_type_name || 'Unknown Award'}</p>
-                            <div className="mt-2 flex items-center gap-3">
-                              <span className="text-xs text-slate-400">
-                                Awarded on {new Date(award.award_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                              </span>
+                        {editingAward === award.id ? (
+                          <div className="flex-1 space-y-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Award Type</label>
+                                <select
+                                  value={editAwardTypeName}
+                                  onChange={(e) => setEditAwardTypeName(e.target.value)}
+                                  className="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-[#2463eb]"
+                                >
+                                  <option value="">Select award type...</option>
+                                  {awardTypes.map((type) => (
+                                    <option key={type} value={type}>{type}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Award Date</label>
+                                <input
+                                  type="date"
+                                  value={editAwardDate}
+                                  onChange={(e) => setEditAwardDate(e.target.value)}
+                                  className="bg-white border border-slate-200 rounded-lg p-2 text-sm w-full focus:ring-2 focus:ring-[#2463eb]"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <button onClick={() => updateAward(award.id)} disabled={updating} className="px-3 py-1.5 bg-[#2463eb] text-white rounded-lg text-sm font-semibold hover:bg-[#1d4ed8] disabled:opacity-50">
+                                {updating ? 'Saving...' : 'Save'}
+                              </button>
+                              <button onClick={cancelEditAward} disabled={updating} className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-semibold hover:bg-slate-50">
+                                Cancel
+                              </button>
                             </div>
                           </div>
-                        </div>
-                        <button
-                          onClick={() => deleteAward(award.id)}
-                          className="p-2 text-slate-400 hover:text-red-500 hover:bg-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <span className="material-symbols-outlined text-lg">delete</span>
-                        </button>
+                        ) : (
+                          <>
+                            <div className="flex gap-4">
+                              <div className="mt-1 flex-shrink-0 w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600">
+                                <span className="material-symbols-outlined text-xl">emoji_events</span>
+                              </div>
+                              <div>
+                                <p className="text-slate-900 font-medium leading-relaxed">{award.award_type_name}</p>
+                                <div className="mt-2 flex items-center gap-3">
+                                  <span className="text-xs text-slate-400">
+                                    Awarded on {new Date(award.award_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => startEditAward(award)} className="p-2 text-slate-400 hover:text-[#2463eb] hover:bg-white rounded-lg">
+                                <span className="material-symbols-outlined text-lg">edit</span>
+                              </button>
+                              <button onClick={() => deleteAward(award.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-white rounded-lg">
+                                <span className="material-symbols-outlined text-lg">delete</span>
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
                     ))
                   )}

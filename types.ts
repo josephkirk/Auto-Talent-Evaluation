@@ -21,20 +21,12 @@ export interface Observation {
   created_at: string;
 }
 
-export interface AwardType {
-  id: number;
-  name: string;
-  created_at: string;
-}
-
 export interface Award {
   id: number;
   employee_id: number;
-  award_type_id: number;
+  award_type_name: string;
   award_date: string;
   created_at: string;
-  // Joined field from award_types
-  award_type_name?: string;
 }
 
 export interface EmployeeWithStats extends Employee {

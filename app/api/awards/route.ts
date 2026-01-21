@@ -6,22 +6,21 @@ import { Award } from '@/types';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { employee_id, award_type_id, award_date } = body;
+    const { employee_id, award_type_name, award_date } = body;
 
-    if (!employee_id || !award_type_id || !award_date) {
+    if (!employee_id || !award_type_name || !award_date) {
       return NextResponse.json(
-        { error: 'Employee ID, award type ID, and award date are required' },
+        { error: 'Employee ID, award type name, and award date are required' },
         { status: 400 }
       );
     }
 
-    // Validate IDs are integers
+    // Validate employee_id is integer
     const employeeIdNum = parseInt(employee_id);
-    const awardTypeIdNum = parseInt(award_type_id);
 
-    if (isNaN(employeeIdNum) || isNaN(awardTypeIdNum)) {
+    if (isNaN(employeeIdNum)) {
       return NextResponse.json(
-        { error: 'Employee ID and award type ID must be valid numbers' },
+        { error: 'Employee ID must be a valid number' },
         { status: 400 }
       );
     }
@@ -36,15 +35,10 @@ export async function POST(request: NextRequest) {
     }
 
     const result = db.prepare(
-      'INSERT INTO awards (employee_id, award_type_id, award_date) VALUES (?, ?, ?)'
-    ).run(employeeIdNum, awardTypeIdNum, award_date);
+      'INSERT INTO awards (employee_id, award_type_name, award_date) VALUES (?, ?, ?)'
+    ).run(employeeIdNum, award_type_name, award_date);
 
-    const award = db.prepare(`
-      SELECT a.*, at.name as award_type_name
-      FROM awards a
-      JOIN award_types at ON a.award_type_id = at.id
-      WHERE a.id = ?
-    `).get(result.lastInsertRowid) as Award;
+    const award = db.prepare('SELECT * FROM awards WHERE id = ?').get(result.lastInsertRowid) as Award;
 
     return NextResponse.json(award, { status: 201 });
   } catch (error) {

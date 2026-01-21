@@ -1,0 +1,10 @@
+# Default Data Configuration
+
+# Award Types
+[award_types]
+types = [
+  "Best Staff",
+  "Employee of the year",
+  "Top Contributor",
+  "Innovation Award"
+]

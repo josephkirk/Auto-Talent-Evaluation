@@ -13,21 +13,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const body = await request.json();
-    const { award_type_id, award_date } = body;
+    const { award_type_name, award_date } = body;
 
-    if (!award_type_id || !award_date) {
+    if (!award_type_name || !award_date) {
       return NextResponse.json(
-        { error: 'Award type ID and award date are required' },
-        { status: 400 }
-      );
-    }
-
-    // Validate IDs are integers
-    const awardTypeIdNum = parseInt(award_type_id);
-
-    if (isNaN(awardTypeIdNum)) {
-      return NextResponse.json(
-        { error: 'Award type ID must be a valid number' },
+        { error: 'Award type name and award date are required' },
         { status: 400 }
       );
     }
@@ -42,19 +32,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const result = db.prepare(
-      'UPDATE awards SET award_type_id = ?, award_date = ? WHERE id = ?'
-    ).run(awardTypeIdNum, award_date, itemId);
+      'UPDATE awards SET award_type_name = ?, award_date = ? WHERE id = ?'
+    ).run(award_type_name, award_date, itemId);
 
     if (result.changes === 0) {
       return NextResponse.json({ error: 'Award not found' }, { status: 404 });
     }
 
-    const updated = db.prepare(`
-      SELECT a.*, at.name as award_type_name
-      FROM awards a
-      JOIN award_types at ON a.award_type_id = at.id
-      WHERE a.id = ?
-    `).get(itemId) as Award;
+    const updated = db.prepare('SELECT * FROM awards WHERE id = ?').get(itemId) as Award;
 
     return NextResponse.json(updated);
   } catch (error) {
