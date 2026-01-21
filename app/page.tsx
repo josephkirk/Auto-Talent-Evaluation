@@ -2,12 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { EmployeeWithStats } from '@/types';
 import Navigation from '@/components/Navigation';
 
 export default function HomePage() {
+  const router = useRouter();
   const [employees, setEmployees] = useState<EmployeeWithStats[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Delete employee states
+  const [deleteDialog, setDeleteDialog] = useState<{ id: number; name: string } | null>(null);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [deletingEmployee, setDeletingEmployee] = useState(false);
 
   useEffect(() => {
     fetchEmployees();
@@ -22,6 +29,31 @@ export default function HomePage() {
       console.error('Error fetching employees:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  function openDeleteDialog(id: number, name: string) {
+    setDeleteDialog({ id, name });
+    setDeleteConfirmName('');
+  }
+
+  async function deleteEmployee() {
+    if (!deleteDialog || deleteConfirmName !== deleteDialog.name) return;
+
+    setDeletingEmployee(true);
+    try {
+      const response = await fetch(`/api/employees/${deleteDialog.id}`, { method: 'DELETE' });
+      if (response.ok) {
+        setEmployees(employees.filter(e => e.id !== deleteDialog.id));
+        setDeleteDialog(null);
+      } else {
+        alert('Failed to delete employee');
+      }
+    } catch (error) {
+      console.error('Error deleting employee:', error);
+      alert('Failed to delete employee');
+    } finally {
+      setDeletingEmployee(false);
     }
   }
 
@@ -113,6 +145,13 @@ export default function HomePage() {
                       Generate Report
                     </button>
                   </Link>
+                  <button
+                    onClick={() => openDeleteDialog(employee.id, employee.name)}
+                    className="px-3 py-2 text-sm font-bold text-red-600 bg-white border border-red-200 hover:bg-red-50 hover:border-red-300 rounded-lg transition-colors flex items-center gap-1"
+                    title="Delete Employee"
+                  >
+                    <span className="material-symbols-outlined text-lg">delete</span>
+                  </button>
                 </div>
               </div>
             ))}
@@ -124,6 +163,73 @@ export default function HomePage() {
           <p>© 2024 AutoTalentEvaluation. All rights reserved.</p>
         </div>
       </main>
+
+      {/* Delete Confirmation Dialog */}
+      {deleteDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-red-600 text-2xl">warning</span>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">Delete Employee</h3>
+                <p className="text-sm text-slate-500">This action cannot be undone</p>
+              </div>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm text-red-800 font-semibold mb-1">Warning: All records will be lost</p>
+                <p className="text-xs text-red-700">
+                  Deleting this employee will permanently remove all associated accomplishments and observations. This action cannot be undone.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Type <span className="font-bold text-slate-900">{deleteDialog.name}</span> to confirm:
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmName}
+                  onChange={(e) => setDeleteConfirmName(e.target.value)}
+                  placeholder={deleteDialog.name}
+                  className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteDialog(null)}
+                disabled={deletingEmployee}
+                className="flex-1 px-4 py-2.5 border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={deleteEmployee}
+                disabled={deleteConfirmName !== deleteDialog.name || deletingEmployee}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {deletingEmployee ? (
+                  <>
+                    <span className="material-symbols-outlined animate-spin">refresh</span>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined">delete</span>
+                    Delete Employee
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

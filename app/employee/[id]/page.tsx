@@ -33,6 +33,11 @@ export default function EmployeeDetailPage() {
   const [editObservationCategory, setEditObservationCategory] = useState<Observation['category']>('other');
   const [updating, setUpdating] = useState(false);
 
+  // Delete employee states
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [deletingEmployee, setDeletingEmployee] = useState(false);
+
   useEffect(() => {
     fetchData();
   }, [id]);
@@ -184,6 +189,31 @@ export default function EmployeeDetailPage() {
     setEditObservationCategory('other');
   }
 
+  function openDeleteDialog() {
+    setShowDeleteDialog(true);
+    setDeleteConfirmName('');
+  }
+
+  async function deleteEmployee() {
+    if (deleteConfirmName !== employee?.name) return;
+
+    setDeletingEmployee(true);
+    try {
+      const response = await fetch(`/api/employees/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        router.push('/');
+      } else {
+        alert('Failed to delete employee');
+      }
+    } catch (error) {
+      console.error('Error deleting employee:', error);
+      alert('Failed to delete employee');
+    } finally {
+      setDeletingEmployee(false);
+      setShowDeleteDialog(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f6f6f8]">
@@ -226,6 +256,12 @@ export default function EmployeeDetailPage() {
                   <p className="text-lg text-[#2463eb] font-medium">{employee.role}</p>
                 </div>
                 <div className="flex gap-2 justify-center">
+                  <button
+                    onClick={openDeleteDialog}
+                    className="px-4 py-2 bg-white border-2 border-red-200 text-red-600 rounded-lg text-sm font-semibold hover:bg-red-50 hover:border-red-300 transition-colors flex items-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-lg">delete</span> Delete Employee
+                  </button>
                   <Link href={`/employee/${id}/report`}>
                     <button className="px-4 py-2 bg-[#2463eb] text-white rounded-lg text-sm font-semibold hover:bg-[#1d4ed8] shadow-sm flex items-center gap-2">
                       <span className="material-symbols-outlined text-lg">bolt</span> Generate Report
@@ -514,6 +550,73 @@ export default function EmployeeDetailPage() {
           </Link>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-red-600 text-2xl">warning</span>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">Delete Employee</h3>
+                <p className="text-sm text-slate-500">This action cannot be undone</p>
+              </div>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm text-red-800 font-semibold mb-1">Warning: All records will be lost</p>
+                <p className="text-xs text-red-700">
+                  Deleting this employee will permanently remove all associated accomplishments and observations. This action cannot be undone.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Type <span className="font-bold text-slate-900">{employee?.name}</span> to confirm:
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmName}
+                  onChange={(e) => setDeleteConfirmName(e.target.value)}
+                  placeholder={employee?.name}
+                  className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteDialog(false)}
+                disabled={deletingEmployee}
+                className="flex-1 px-4 py-2.5 border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={deleteEmployee}
+                disabled={deleteConfirmName !== employee?.name || deletingEmployee}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {deletingEmployee ? (
+                  <>
+                    <span className="material-symbols-outlined animate-spin">refresh</span>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined">delete</span>
+                    Delete Employee
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
